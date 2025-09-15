@@ -61,16 +61,12 @@ quality: { ocrConfidence, llmConfidence, overallConfidence, method }
 git clone https://github.com/Timo91080/ocr.git
 cd ProjetOcr
 npm install
-cp .env.example .env   # copier toutes les clé de env example dans env
+
 ```
 
 Node ≥ 18 recommandé (ESM + Sharp). Aucun service Python requis (mode hybride retiré).
 
----
-
-
-
-
+--
 
 ## ▶️ Lancement
 Développement (reload auto) :
