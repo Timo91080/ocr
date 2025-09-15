@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extracteur OCR de Références Produits</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-zone:hover {
+            border-color: #764ba2;
+            background-color: #f8f9ff;
+        }
+        
+        .upload-zone.dragover {
+            border-color: #4CAF50;
+            background-color: #e8f5e8;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+        
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .process-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .process-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .process-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 0;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results-section {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .results-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .reference-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .reference-uncertain {
+            border-left-color: #ff9800;
+        }
+        
+        .reference-invalid {
+            border-left-color: #f44336;
+        }
+        
+        .confidence-bar {
+            width: 100px;
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #c8e6c9;
+        }
+
+        /* Badges statut */
+        .status-bar { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 20px; }
+        .badge-status { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:6px 12px; border-radius:20px; background:#eef0f6; color:#444; box-shadow:0 1px 2px rgba(0,0,0,0.08); }
+        .badge-status.success { background:#dcf6e5; color:#256029; }
+        .badge-status.info { background:#e0ecff; color:#1d4ed8; }
+        .badge-status.warning { background:#fff4d6; color:#b45309; }
+        .badge-status.error { background:#ffe2e0; color:#b91c1c; }
+        .badge-status.neutral { background:#ececec; color:#555; }
+        .badge-dot { width:8px; height:8px; border-radius:50%; background:currentColor; opacity:0.9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+    <h1>🔍 Extracteur OCR Bon de Commande</h1>
+        
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+            <div class="upload-text">
+                📸 Glissez-déposez votre bon de commande ici ou cliquez pour sélectionner
+            </div>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Choisir une image
+            </button>
+        </div>
+        
+        <div class="options">
+            <div class="option">
+                <input type="checkbox" id="preprocess" checked>
+                <label for="preprocess">Préprocessing de l'image</label>
+            </div>
+            <div class="option">
+                <input type="checkbox" id="orientation" checked>
+                <label for="orientation">Correction d'orientation</label>
+            </div>
+            <div class="option">
+                <input type="checkbox" id="threshold">
+                <label for="threshold">Seuillage binaire</label>
+            </div>
+            <div class="option">
+                <input type="checkbox" id="contextAnalysis" checked>
+                <label for="contextAnalysis">Analyse contextuelle</label>
+            </div>
+        </div>
+        
+        <button class="process-btn" id="processBtn" disabled>
+            🚀 Extraire les références produits
+        </button>
+        
+                <div id="downloadButtons" style="display:none; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                    <a id="openSheetLink" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:none;">
+                        <button class="download-btn" type="button" style="background:linear-gradient(135deg,#10b981,#059669)" title="Ouvrir la feuille Google Sheet dans un nouvel onglet">📄 Ouvrir Google Sheet</button>
+                    </a>
+                </div>
+
+        <div id="statusBar" class="status-bar" style="display:none;">
+            <div id="sheetStatus" class="badge-status neutral"><span class="badge-dot"></span>Sheet: -</div>
+            <div id="mysqlStatus" class="badge-status neutral"><span class="badge-dot"></span>MySQL: -</div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Extraction en cours... Veuillez patienter</div>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="results-section">
+                <div class="results-title">
+                    ✅ Données extraites <span id="validCount"></span>
+                </div>
+                <div id="validReferences"></div>
+            </div>
+            
+            <div class="results-section">
+                <div class="results-title">
+                    ⚠️ Références incertaines <span id="uncertainCount"></span>
+                </div>
+                <div id="uncertainReferences"></div>
+            </div>
+            
+            <div class="results-section">
+                <div class="results-title">
+                    📊 Métriques de qualité
+                </div>
+                <div id="qualityMetrics"></div>
+            </div>
+            
+            <div class="results-section">
+                <div class="results-title">
+                    💡 Recommandations
+                </div>
+                <div id="recommendations"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+    const downloadButtonsWrapper = document.getElementById('downloadButtons');
+    const statusBar = document.getElementById('statusBar');
+    const sheetStatus = document.getElementById('sheetStatus');
+    const mysqlStatus = document.getElementById('mysqlStatus');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        
+        let selectedFile = null;
+        
+        // Gestion du drag & drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Veuillez sélectionner un fichier image valide.');
+                return;
+            }
+            
+            selectedFile = file;
+            processBtn.disabled = false;
+            // Ne plus remplacer tout le contenu (sinon on perd l'input file et les handlers)
+            let nameBadge = uploadZone.querySelector('.selected-file-name');
+            const uploadText = uploadZone.querySelector('.upload-text');
+            if (uploadText) {
+                uploadText.textContent = `✅ ${file.name} sélectionné`;
+            }
+            if (!nameBadge) {
+                nameBadge = document.createElement('div');
+                nameBadge.className = 'selected-file-name';
+                nameBadge.style.marginTop = '10px';
+                nameBadge.style.fontSize = '0.9em';
+                nameBadge.style.color = '#333';
+                uploadZone.appendChild(nameBadge);
+            }
+            nameBadge.textContent = 'Cliquez sur "Choisir une image" pour changer.';
+
+            // RESET état précédent (nouvelle image => on repart à zéro)
+            results.style.display = 'none';
+            document.getElementById('validReferences').innerHTML = '';
+            document.getElementById('uncertainReferences').innerHTML = '';
+            document.getElementById('qualityMetrics').innerHTML = '';
+            document.getElementById('recommendations').innerHTML = '';
+            document.getElementById('validCount').textContent = '';
+            document.getElementById('uncertainCount').textContent = '';
+            downloadButtonsWrapper.style.display = 'none';
+            statusBar.style.display = 'none';
+            updateSheetBadge({ enabled:false });
+            updateMySQLBadge({ state:'idle' });
+        }
+        
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+            
+            // Options de traitement
+            const params = new URLSearchParams({
+                preprocess: document.getElementById('preprocess').checked,
+                orientation: document.getElementById('orientation').checked,
+                threshold: document.getElementById('threshold').checked,
+                contextAnalysis: document.getElementById('contextAnalysis').checked
+            });
+            
+            showLoading();
+            
+            try {
+                const response = await fetch(`/extract?${params}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResults(data);
+                } else {
+                    showError(data.message || 'Erreur lors de l\'extraction');
+                }
+            } catch (error) {
+                showError('Erreur de connexion: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        });
+        
+        function showLoading() {
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            processBtn.disabled = true;
+        }
+        
+        function hideLoading() {
+            loading.style.display = 'none';
+            processBtn.disabled = false;
+        }
+        
+        function showResults(data) {
+            const { extraction } = data;
+            
+            // Afficher les données extraites
+            document.getElementById('validCount').textContent = `(Données extraites)`;
+            document.getElementById('validReferences').innerHTML = createExtractedDataDisplay(extraction.data);
+            
+            // Masquer la section des références incertaines (plus utilisée)
+            document.getElementById('uncertainCount').textContent = `(0)`;
+            document.getElementById('uncertainReferences').innerHTML = '';
+            
+            // Métriques de qualité
+            document.getElementById('qualityMetrics').innerHTML = `
+                <div class="reference-item">
+                    <span>Confiance globale</span>
+                    <div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${extraction.quality.overallConfidence * 100}%"></div>
+                        </div>
+                        <small>${(extraction.quality.overallConfidence * 100).toFixed(1)}%</small>
+                    </div>
+                </div>
+                <div class="reference-item">
+                    <span>Confiance OCR</span>
+                    <div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${extraction.quality.ocrConfidence}%"></div>
+                        </div>
+                        <small>${extraction.quality.ocrConfidence.toFixed(1)}%</small>
+                    </div>
+                </div>
+                <div class="reference-item">
+                    <span>Durée de traitement</span>
+                    <span>${extraction.performance.totalDuration}ms</span>
+                </div>
+            `;
+            
+            // Recommandations (adapté à la nouvelle structure)
+            const recommendations = data.recommendations || [];
+            document.getElementById('recommendations').innerHTML = 
+                recommendations.length > 0 ? recommendations.map(rec => `
+                    <div class="reference-item">
+                        <span>${rec.message}</span>
+                        <span class="badge ${rec.priority}">${rec.priority}</span>
+                    </div>
+                `).join('') : '<div class="reference-item">Aucune recommandation</div>';
+            
+                        results.style.display = 'block';
+                        downloadButtonsWrapper.style.display = 'flex';
+
+                        // Bouton ouverture Google Sheet si lien fourni
+                        const openSheetLink = document.getElementById('openSheetLink');
+                        if (data.googleSheets && data.googleSheets.enabled) {
+                            // URL fixée explicitement (ignorer ce que renvoie l'API)
+                            openSheetLink.href = 'https://docs.google.com/spreadsheets/d/10B-2yBpDOm45sHj9uvXSm9lY-K106pTfl4-GlLFeFvY/edit?usp=sharing';
+                            openSheetLink.style.display = 'inline-block';
+                            updateSheetBadge({ enabled:true, sheetUrl: data.googleSheets.sheetUrl });
+                        } else {
+                            openSheetLink.style.display = 'none';
+                            updateSheetBadge({ enabled:false });
+                        }
+                        // Reset MySQL badge state (no info yet from resend/push)
+                        updateMySQLBadge({ state:'idle' });
+                        statusBar.style.display = 'flex';
+        }
+        
+        // Fonction pour afficher les données extraites
+        function createExtractedDataDisplay(data) {
+            const fields = [
+                { label: 'Nom complet', value: data.nomComplet },
+                { label: 'Prénom', value: data.prenom },
+                { label: 'Nom', value: data.nom },
+                { label: 'Adresse', value: data.adresse },
+                { label: 'Ville', value: data.ville },
+                { label: 'Code postal', value: data.codePostal },
+                { label: 'Téléphone', value: data.telephone },
+                { label: 'Email', value: data.email },
+                { label: 'N° de compte', value: data.numeroCompte },
+                { label: 'IBAN', value: data.iban },
+                { label: 'Type de document', value: data.typeDocument },
+                { label: 'Banque', value: data.banque },
+                { label: 'Date du document', value: data.dateDocument },
+                { label: 'Autres infos', value: data.autresInfos }
+            ];
+            // Intégration des données avancées
+            let advancedHtml = '';
+            if (data.advanced) {
+                const id = data.advanced.identity || {};
+                const idFields = [
+                  { label: 'Identité détectée', value: id.nomComplet },
+                  { label: 'Date de naissance', value: id.dateNaissance },
+                  { label: 'Téléphone (heuristique)', value: id.telephone },
+                  { label: 'N° client', value: id.numeroClient },
+                  { label: 'Code privilège', value: id.codePrivilege }
+                ].filter(f => f.value);
+                if (idFields.length) {
+                  advancedHtml += '<h3>Données identité (heuristique)</h3>' + idFields.map(f => `
+                  <div class="reference-item">
+                    <span><strong>${f.label}:</strong></span>
+                    <div>${f.value}</div>
+                  </div>`).join('');
+                }
+                if (data.advanced.articles && data.advanced.articles.length) {
+                  advancedHtml += '<h3>Articles détectés (heuristique)</h3>' + data.advanced.articles.map(a => `
+                    <div class="reference-item">
+                      <span><strong>${a.nom || '(Sans nom)'}:</strong></span>
+                      <div>Ref: ${a.reference || '-'} | Qté: ${a.quantite} | PU: ${a.prixUnitaire}€ | Total: ${a.total}€</div>
+                    </div>`).join('');
+                }
+                if (data.advanced.gain) {
+                  advancedHtml += `
+                  <h3>Gain détecté</h3>
+                  <div class="reference-item"><span><strong>${data.advanced.gain.type}:</strong></span><div>${data.advanced.gain.montant} €</div></div>`;
+                }
+                if (data.advanced.totals?.totalCommande) {
+                  advancedHtml += `
+                  <h3>Total commande (heuristique)</h3>
+                  <div class="reference-item"><span><strong>Total:</strong></span><div>${data.advanced.totals.totalCommande} €</div></div>`;
+                }
+            }
+            const base = fields
+                .filter(field => field.value && field.value.trim() !== '')
+                .map(field => `
+                    <div class="reference-item">
+                        <span><strong>${field.label}:</strong></span>
+                        <div>${field.value}</div>
+                    </div>
+                `).join('');
+            return (base || '<div class="reference-item">Aucune donnée extraite</div>') + advancedHtml;
+        }
+        
+        // Bouton unique: seulement ouvrir Google Sheet (affiché après extraction réussie avec URL disponible)
+
+        function updateSheetBadge(info) {
+            if (!info) return;
+            let cls = 'badge-status neutral';
+            let text = 'Sheet: -';
+            if (!info.enabled && !info.appended) {
+                cls = 'badge-status warning';
+                text = 'Sheet: désactivé';
+            } else if (info.appended) {
+                cls = 'badge-status success';
+                text = 'Sheet: ajouté';
+            } else if (info.enabled) {
+                cls = 'badge-status info';
+                text = 'Sheet: prêt';
+            }
+            sheetStatus.className = cls;
+            sheetStatus.innerHTML = '<span class="badge-dot"></span>'+text;
+        }
+
+        function updateMySQLBadge(state) {
+            if (!state) return;
+            let cls = 'badge-status neutral';
+            let text = 'MySQL: -';
+            switch (state.state) {
+                case 'idle':
+                    cls = 'badge-status neutral'; text='MySQL: en attente'; break;
+                case 'inserted':
+                    cls = 'badge-status success'; text='MySQL: inséré'; break;
+                case 'exists':
+                    cls = 'badge-status info'; text='MySQL: déjà présent'; break;
+                case 'skipped':
+                    cls = 'badge-status warning'; text='MySQL: ignoré'; break;
+                case 'error':
+                    cls = 'badge-status error'; text='MySQL: erreur'; break;
+            }
+            mysqlStatus.className = cls;
+            mysqlStatus.innerHTML = '<span class="badge-dot"></span>'+text;
+        }
+
+        async function triggerDownload(response, ext, baseName) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const stamp = new Date().toISOString().slice(0,19).replace(/:/g,'-');
+            const name = baseName ? `${baseName}-${stamp}.${ext}` : `extraction-results-${stamp}.${ext}`;
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+        
+        function createReferenceItem(ref, type) {
+            const confidence = Math.round((ref.confidence || 0) * 100);
+            const suggestion = ref.suggestion ? ` → ${ref.suggestion}` : '';
+            
+            return `
+                <div class="reference-item reference-${type}">
+                    <span><strong>${ref.reference}</strong>${suggestion}</span>
+                    <div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${confidence}%"></div>
+                        </div>
+                        <small>${confidence}%</small>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            document.querySelector('.container').insertBefore(errorDiv, results);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

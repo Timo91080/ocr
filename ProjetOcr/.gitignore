@@ -1,0 +1,93 @@
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/
+
+# Production build
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# Keep SQLite data file (include .db for portability) but ignore temporary WAL/SHM if created
+data/*
+!data/.gitkeep
+!data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+.cache/
+.temp/
+
+# Tests
+coverage/
+
+# Python virtual envs & caches
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local OCR / model artifacts
+paddle_ocr_service/
+paddle_venv/
+python_ocr/
+fra.traineddata
+models/
+weights/
+*.traineddata
+*.onnx
+*.pt
+*.bin
+*.ckpt
+
+# Large test / sample images (optional keep a curated subset)
+test-images/
+logs/
+logs/**/*
+
+# Backup / dump / exports
+*.sql
+*.sqlite
+*.sqlite3
+*.bak
+dump_*
+
+# System & editor extras
+.history/
+.ruff_cache/
+.mypy_cache/
+
+# If you want to IGNORE ALMOST EVERYTHING except key project files, uncomment below:
+# *
+# !.gitignore
+# !package.json
+# !package-lock.json
+# !README.md
+# !README_*.md
+# !.env.example
+# !src/**
+# !public/**
+# !sheet_rows.sql
