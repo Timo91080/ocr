@@ -1,0 +1,142 @@
+@@ .. @@
+         .badge-status.error { background:#ffe2e0; color:#b91c1c; }
+         .badge-status.neutral { background:#ececec; color:#555; }
+         .badge-dot { width:8px; height:8px; border-radius:50%; background:currentColor; opacity:0.9; }
++        
++        .corrections-section {
++            background: #f0f9ff;
++            border: 1px solid #0ea5e9;
++            border-radius: 8px;
++            padding: 15px;
++            margin: 10px 0;
++        }
++        
++        .correction-item {
++            background: white;
++            border-radius: 6px;
++            padding: 10px;
++            margin: 8px 0;
++            border-left: 4px solid #0ea5e9;
++        }
++        
++        .correction-field {
++            font-weight: bold;
++            color: #0369a1;
++        }
++        
++        .correction-change {
++            font-family: monospace;
++            font-size: 0.9em;
++        }
++        
++        .correction-original {
++            color: #dc2626;
++            text-decoration: line-through;
++        }
++        
++        .correction-new {
++            color: #059669;
++            font-weight: bold;
++        }
+     </style>
+ </head>
+ <body>
+@@ .. @@
+         <div id="statusBar" class="status-bar" style="display:none;">
+             <div id="sheetStatus" class="badge-status neutral"><span class="badge-dot"></span>Sheet: -</div>
+             <div id="mysqlStatus" class="badge-status neutral"><span class="badge-dot"></span>MySQL: -</div>
++            <div id="referenceApiStatus" class="badge-status neutral"><span class="badge-dot"></span>API Ref: -</div>
+         </div>
+         
+         <div class="loading" id="loading">
+@@ .. @@
+             <div class="results-section">
+                 <div class="results-title">
+                     📊 Métriques de qualité
+                 </div>
+                 <div id="qualityMetrics"></div>
+             </div>
+             
++            <div class="results-section" id="correctionsSection" style="display:none;">
++                <div class="results-title">
++                    🔧 Corrections appliquées
++                </div>
++                <div id="correctionsDetails"></div>
++            </div>
++            
+             <div class="results-section">
+                 <div class="results-title">
+                     💡 Recommandations
+@@ .. @@
+         const statusBar = document.getElementById('statusBar');
+         const sheetStatus = document.getElementById('sheetStatus');
+         const mysqlStatus = document.getElementById('mysqlStatus');
++        const referenceApiStatus = document.getElementById('referenceApiStatus');
+         const loading = document.getElementById('loading');
+         const results = document.getElementById('results');
+         
+@@ .. @@
+             // Reset MySQL badge state (no info yet from resend/push)
+             updateMySQLBadge({ state:'idle' });
+             statusBar.style.display = 'flex';
++            
++            // Afficher les corrections si présentes
++            if (data.extraction && data.extraction.corrections && data.extraction.corrections.applied > 0) {
++                showCorrections(data.extraction.corrections);
++            }
++            
++            // Mettre à jour le statut de l'API de référence
++            updateReferenceApiBadge({ corrections: data.extraction?.corrections?.applied || 0 });
+         }
+         
+         // Fonction pour afficher les données extraites
+@@ .. @@
+             mysqlStatus.innerHTML = '<span class="badge-dot"></span>'+text;
+         }
+ 
++        function updateReferenceApiBadge(info) {
++            if (!info) return;
++            let cls = 'badge-status neutral';
++            let text = 'API Ref: -';
++            if (info.corrections > 0) {
++                cls = 'badge-status success';
++                text = `API Ref: ${info.corrections} corr.`;
++            } else {
++                cls = 'badge-status info';
++                text = 'API Ref: OK';
++            }
++            referenceApiStatus.className = cls;
++            referenceApiStatus.innerHTML = '<span class="badge-dot"></span>'+text;
++        }
++
++        function showCorrections(corrections) {
++            const section = document.getElementById('correctionsSection');
++            const details = document.getElementById('correctionsDetails');
++            
++            if (!corrections || !corrections.details || corrections.details.length === 0) {
++                section.style.display = 'none';
++                return;
++            }
++            
++            let html = `<div class="corrections-section">`;
++            html += `<p><strong>${corrections.applied} correction(s) appliquée(s) grâce à l'API de référence :</strong></p>`;
++            
++            corrections.details.forEach((corr, index) => {
++                html += `<div class="correction-item">`;
++                html += `<div class="correction-field">Article ${corr.articleIndex + 1} - ${corr.field}</div>`;
++                html += `<div class="correction-change">`;
++                html += `<span class="correction-original">${corr.original || 'vide'}</span> → `;
++                html += `<span class="correction-new">${corr.corrected}</span>`;
++                html += `</div>`;
++                html += `<small style="color: #6b7280;">Raison: ${corr.reason} (confiance: ${(corr.confidence * 100).toFixed(0)}%)</small>`;
++                html += `</div>`;
++            });
++            
++            html += `</div>`;
++            details.innerHTML = html;
++            section.style.display = 'block';
++        }
++
+         async function triggerDownload(response, ext, baseName) {
+             const blob = await response.blob();
+             const url = window.URL.createObjectURL(blob);
